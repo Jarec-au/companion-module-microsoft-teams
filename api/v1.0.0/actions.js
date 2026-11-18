@@ -5,7 +5,7 @@ export function setupActions(instance) {
             description: "Enable/Disable the microphone",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         apiVersion: "1.0.0",
                         service: "toggle-mute",
@@ -22,7 +22,7 @@ export function setupActions(instance) {
             description: "Enable/Disable the camera",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         apiVersion: "1.0.0",
                         service: "toggle-video",
@@ -39,7 +39,7 @@ export function setupActions(instance) {
             description: "Leave the current meeting",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         apiVersion: "1.0.0",
                         service: "call",
@@ -53,10 +53,10 @@ export function setupActions(instance) {
         },
         toggleBackgroundBlur: {
             name: "Toggle background blur",
-            description: "Enable/Disable the backgroud blur effect",
+            description: "Enable/Disable the background blur effect",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         apiVersion: "1.0.0",
                         service: "background-blur",
@@ -73,7 +73,7 @@ export function setupActions(instance) {
             description: "Raise/Unraise the hand in an active call",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         apiVersion: "1.0.0",
                         service: "raise-hand",
@@ -119,7 +119,7 @@ export function setupActions(instance) {
                     case 4: message.action = "react-wow"; break;
                 }
 
-                instance.ws.send(JSON.stringify(message));
+                instance.send(JSON.stringify(message));
             },
         },
     })

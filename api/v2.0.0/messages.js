@@ -1,5 +1,8 @@
 import { InstanceStatus } from '@companion-module/base'
 import WebSocket from 'ws'
+import { createRequire } from 'module'
+
+const { version: moduleVersion } = createRequire(import.meta.url)('../../package.json')
 
 export function parseStatus(instance, data) {
 	if (data.meetingUpdate.meetingState != null) {
@@ -26,43 +29,32 @@ export function parseStatus(instance, data) {
 	}
 }
 
-export function messageReceived(instance, data) {
-	let msgValue = null
-	try {
-		msgValue = JSON.parse(data)
-	} catch (e) {
-		msgValue = data
-	}
-	if (msgValue.tokenRefresh != null) {
-		instance.config.apiToken = msgValue.tokenRefresh;
-		instance.saveConfig(instance.config)
-		instance.configUpdated(instance.config)
-	}
-	if (msgValue.meetingUpdate != null) {
-		instance.parseTeamsStatus(msgValue);
-	}
-}
-
 export function initWebSocketHandle(instance) {
 	if (instance.reconnect_timer) {
 		clearTimeout(instance.reconnect_timer)
 		instance.reconnect_timer = null
 	}
 
-	const url = "ws://" + instance.config.targetIp + ":8124?token=" + instance.config.apiToken + "&protocol-version=2.0.0&manufacturer=Bitfocus&device=Companion&app=Companion-Microsoft%20Teams&app-version=1.0.2"
-	if (!url || !instance.config.targetIp) {
+	if (!instance.config.targetIp) {
 		instance.updateStatus(InstanceStatus.BadConfig, `No Target IP defined`)
 		return
 	}
 
+	// v2 pairing: an empty token is valid and triggers the "allow device" prompt in Teams
+	const url = new URL(`ws://${instance.config.targetIp}:8124`)
+	url.search = new URLSearchParams({
+		token: instance.config.apiToken || '',
+		'protocol-version': '2.0.0',
+		manufacturer: 'Bitfocus',
+		device: 'Companion',
+		app: 'Companion-Microsoft Teams',
+		'app-version': moduleVersion,
+	}).toString()
+
 	instance.updateStatus(InstanceStatus.Connecting)
 
-
-	if (instance.ws) {
-		instance.ws.close(1000)
-		delete instance.ws
-	}
-	instance.ws = new WebSocket(url)
+	instance.closeWebSocket()
+	instance.ws = new WebSocket(url.toString())
 
 	instance.ws.on('open', () => {
 		instance.updateStatus(InstanceStatus.Ok);
@@ -82,12 +74,12 @@ export function initWebSocketHandle(instance) {
 		instance.messageReceivedFromWebSocket(data);
 	})
 
-	instance.ws.on('error', (data) => {
-		if (data == "Error: Unexpected server response: 403") {
+	instance.ws.on('error', (err) => {
+		if (/Unexpected server response: 403\b/.test(err?.message)) {
 			instance.updateStatus(InstanceStatus.Disconnected, 'Invalid API token or Teams not running')
 		}
 		else {
-			instance.log('error', `WebSocket error: ${data}`)
+			instance.log('error', `WebSocket error: ${err?.message ?? err}`)
 		}
 	})
 }

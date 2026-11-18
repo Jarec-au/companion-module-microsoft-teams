@@ -75,7 +75,7 @@ export function setupFeedbacks(instance) {
         canToggleMute: {
             type: 'boolean',
             name: 'Can Toggle Mute',
-            description: 'True when the user can mute others, false when they can not.',
+            description: 'True when the user can toggle their microphone, false when they can not.',
             options: [],
             callback: (feedback, context) => {
                 return instance.canToggleMute;
@@ -84,7 +84,7 @@ export function setupFeedbacks(instance) {
         canToggleVideo: {
             type: 'boolean',
             name: 'Can Toggle Video',
-            description: 'True when the, false when they can not.',
+            description: 'True when the user can toggle their camera, false when they can not.',
             options: [],
             callback: (feedback, context) => {
                 return instance.canToggleVideo;
@@ -93,7 +93,7 @@ export function setupFeedbacks(instance) {
         canToggleHand: {
             type: 'boolean',
             name: 'Can Toggle Hand',
-            description: 'True when , false when they can not.',
+            description: 'True when the user can raise or lower their hand, false when they can not.',
             options: [],
             callback: (feedback, context) => {
                 return instance.canToggleHand;
@@ -102,7 +102,7 @@ export function setupFeedbacks(instance) {
         canToggleBlur: {
             type: 'boolean',
             name: 'Can Toggle Blur',
-            description: 'True when the camera is on and blue toggle is available, false when it is not.',
+            description: 'True when the camera is on and blur toggle is available, false when it is not.',
             options: [],
             callback: (feedback, context) => {
                 return instance.canToggleBlur;
@@ -146,8 +146,8 @@ export function setupFeedbacks(instance) {
         },
         canStopSharing: {
             type: 'boolean',
-            name: 'Sharing',
-            description: 'True when user is sharing, false when they are not',
+            name: 'Can Stop Sharing',
+            description: 'True when the user is sharing and can stop sharing, false when they can not.',
             options: [],
             callback: (feedback, context) => {
                 return instance.canStopSharing;

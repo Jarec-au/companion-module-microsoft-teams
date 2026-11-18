@@ -5,7 +5,7 @@ export function setupActions(instance) {
             description: "Enable/Disable the microphone",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         action: "toggle-mute",
                         parameters: {},
@@ -19,7 +19,7 @@ export function setupActions(instance) {
             description: "Enable/Disable the camera",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         action: "toggle-video",
                         parameters: {},
@@ -33,7 +33,7 @@ export function setupActions(instance) {
             description: "Leave the current meeting",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         action: "leave-call",
                         parameters: {},
@@ -44,10 +44,10 @@ export function setupActions(instance) {
         },
         toggleBackgroundBlur: {
             name: "Toggle background blur",
-            description: "Enable/Disable the backgroud blur effect",
+            description: "Enable/Disable the background blur effect",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         action: "toggle-background-blur",
                         parameters: {},
@@ -61,7 +61,7 @@ export function setupActions(instance) {
             description: "Raise/Unraise the hand in an active call",
             options: [],
             callback: async (action, context) => {
-                instance.ws.send(
+                instance.send(
                     JSON.stringify({
                         action: "toggle-hand",
                         parameters: {},
@@ -102,7 +102,7 @@ export function setupActions(instance) {
                     case 4: message.parameters.type = "wow"; break;
                 }
 
-                instance.ws.send(JSON.stringify(message));
+                instance.send(JSON.stringify(message));
             },
         },
     })

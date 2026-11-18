@@ -136,7 +136,7 @@ export function getPresetDefinitions(self) {
     }
 
     presets['toggle-hand'] = {
-        name: 'Toggle Background Blur',
+        name: 'Toggle Raise Hand',
         category: 'Buttons',
         type: 'button',
         style: {
