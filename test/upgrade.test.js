@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { upgradeScripts, V1_FEEDBACK_RENAMES } from '../upgrade.js'
 import { STATE_FIELDS } from '../state.js'
 
-const [, removeApiV1, reactionsUseNames, moveTokenToSecrets] = upgradeScripts
+const [, removeApiV1, reactionsUseNames, moveTokenToSecrets, addControlMethod, addPollInterval] = upgradeScripts
 const context = { currentConfig: {} }
 
 function feedback(feedbackId, options = {}) {
@@ -78,4 +78,26 @@ test('moveTokenToSecrets does not write an empty token', () => {
 	const res = moveTokenToSecrets(context, { config: { apiToken: '' }, secrets: null, actions: [], feedbacks: [] })
 	assert.deepEqual(res.updatedConfig, {})
 	assert.equal(res.updatedSecrets, undefined)
+})
+
+test('addControlMethod keeps existing connections on the Teams API', () => {
+	const res = addControlMethod(context, { config: { targetIp: 'x' }, secrets: null, actions: [], feedbacks: [] })
+	assert.deepEqual(res.updatedConfig, { targetIp: 'x', controlMethod: 'teams-api' })
+})
+
+test('addPollInterval fills in the default only when missing', () => {
+	const res = addPollInterval(context, { config: { targetIp: 'x' }, secrets: null, actions: [], feedbacks: [] })
+	assert.deepEqual(res.updatedConfig, { targetIp: 'x', pollInterval: 500 })
+	const kept = addPollInterval(context, { config: { pollInterval: 1000 }, secrets: null, actions: [], feedbacks: [] })
+	assert.equal(kept.updatedConfig, null)
+})
+
+test('addControlMethod leaves an existing choice alone', () => {
+	const res = addControlMethod(context, {
+		config: { controlMethod: 'other' },
+		secrets: null,
+		actions: [],
+		feedbacks: [],
+	})
+	assert.equal(res.updatedConfig, null)
 })

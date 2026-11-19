@@ -1,6 +1,6 @@
 # companion-module-microsoft-teams
 
-Bitfocus Companion module for controlling the Microsoft Teams desktop app through Teams' third-party device API (protocol 2.0.0). See [companion/HELP.md](companion/HELP.md) for setup and the list of actions and feedbacks.
+Bitfocus Companion module for controlling the Microsoft Teams desktop app, through Teams' third-party device API (protocol 2.0.0, retired by Microsoft but still answered by some builds) or Windows UI Automation. See [companion/HELP.md](companion/HELP.md) for setup and the list of actions and feedbacks.
 
 ![Button Presets](/buttons_example.png)
 
@@ -24,7 +24,8 @@ To test in Companion without packaging, set the developer modules path in the Co
 
 | File           | Purpose                                                           |
 | -------------- | ----------------------------------------------------------------- |
-| `index.js`     | Module instance: WebSocket connection, pairing, message handling  |
+| `index.js`     | Module instance: starts the selected control method, holds state  |
+| `control/`     | Control methods (ways of driving Teams); `index.js` lists them    |
 | `state.js`     | Meeting state fields; drives the feedbacks, variables and parsing |
 | `actions.js`   | Action definitions                                                |
 | `feedbacks.js` | Feedback definitions (generated from `state.js`)                  |

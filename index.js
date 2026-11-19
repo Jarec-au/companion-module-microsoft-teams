@@ -1,166 +1,129 @@
 import { createRequire } from 'node:module'
 import { InstanceBase, InstanceStatus, runEntrypoint } from '@companion-module/base'
-import WebSocket from 'ws'
 import { upgradeScripts } from './upgrade.js'
 import { getConfigFields } from './config.js'
 import { getActionDefinitions } from './actions.js'
 import { getFeedbackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions, getVariableValues } from './variables.js'
 import { getPresetDefinitions } from './presets.js'
-import { applyMeetingUpdate, createInitialState } from './state.js'
+import { createInitialState, mergeState } from './state.js'
+import { DEFAULT_CONTROL_METHOD, resolveControlMethod } from './control/index.js'
 
 const { version: MODULE_VERSION } = createRequire(import.meta.url)('./package.json')
 
-/** Teams always listens for third-party devices on this port */
-const TEAMS_PORT = 8124
-const RECONNECT_DELAY_MS = 5000
-
 class TeamsInstance extends InstanceBase {
-	/** @type {WebSocket | undefined} */
-	ws
-	/** @type {NodeJS.Timeout | undefined} */
-	reconnectTimer
-	isDestroyed = false
-	requestId = 0
 	state = createInitialState()
 	secrets = {}
+	/** The active control method, see control/index.js */
+	control = null
+	controlMethodId = null
+	/** Identifies the active control method's callbacks */
+	controlSession = null
 
 	async init(config, _isFirstInit, secrets) {
-		this.config = config
-		this.secrets = secrets ?? {}
-
 		this.setActionDefinitions(getActionDefinitions(this))
 		this.setFeedbackDefinitions(getFeedbackDefinitions(this))
 		this.setVariableDefinitions(getVariableDefinitions())
 		this.setVariableValues(getVariableValues(this.state))
 		this.setPresetDefinitions(getPresetDefinitions())
 
-		this.connect()
+		await this.configUpdated(config, secrets)
 	}
 
 	async configUpdated(config, secrets) {
 		this.config = config
 		this.secrets = secrets ?? {}
-		this.connect()
+		this.startControl()
 	}
 
 	async destroy() {
-		this.isDestroyed = true
-		this.disconnect()
+		this.stopControl()
 	}
 
 	getConfigFields() {
 		return getConfigFields()
 	}
 
-	connect() {
-		this.disconnect()
+	startControl() {
+		this.stopControl()
 
-		if (!this.config.targetIp) {
-			this.updateStatus(InstanceStatus.BadConfig, 'No target IP address')
+		const id = this.config.controlMethod || DEFAULT_CONTROL_METHOD
+		const resolved = resolveControlMethod(id)
+		if (!resolved) {
+			this.updateStatus(InstanceStatus.BadConfig, `Unknown control method: ${id}`)
 			return
 		}
-
-		const url = new URL(`ws://${this.config.targetIp}:${TEAMS_PORT}`)
-		url.search = new URLSearchParams({
-			// An empty token is valid: Teams then asks the user to allow the device
-			token: this.secrets.apiToken ?? '',
-			'protocol-version': '2.0.0',
-			manufacturer: 'Bitfocus',
-			device: 'Companion',
-			app: 'Companion-Microsoft Teams',
-			'app-version': MODULE_VERSION,
-		}).toString()
-
-		this.updateStatus(InstanceStatus.Connecting)
-
-		const ws = new WebSocket(url)
-		this.ws = ws
-
-		ws.on('open', () => {
-			this.updateStatus(InstanceStatus.Ok)
-			// Teams replies with the current meeting state
-			ws.send('')
-		})
-
-		ws.on('close', (code) => {
-			this.updateStatus(
-				InstanceStatus.Disconnected,
-				code === 1006 ? 'Teams not running' : `Connection closed with code ${code}`,
+		const { method, fallbackFrom } = resolved
+		if (fallbackFrom) {
+			this.log(
+				'warn',
+				`"${fallbackFrom.label}" does not work on this computer (${process.platform}); using "${method.label}" instead`,
 			)
-			this.scheduleReconnect()
-		})
+		}
 
-		ws.on('message', (data) => this.handleMessage(data.toString()))
+		// State from a previous method or session no longer applies
+		this.resetState()
 
-		ws.on('error', (err) => {
-			if (/Unexpected server response: 403\b/.test(err.message)) {
-				this.updateStatus(InstanceStatus.AuthenticationFailure, 'Token rejected, or the Teams API is disabled')
-			} else {
-				this.log('error', `WebSocket error: ${err.message}`)
-			}
-		})
+		const session = {}
+		this.controlSession = session
+		this.controlMethodId = method.id
+		this.control = method.create(this.createControlHost(session))
+		this.control.start(this.config, this.secrets)
 	}
 
-	/** Close the socket without triggering a reconnect */
-	disconnect() {
-		clearTimeout(this.reconnectTimer)
-		this.reconnectTimer = undefined
-
-		if (this.ws) {
-			this.ws.removeAllListeners()
-			// A late error from the closing socket must not crash the process
-			this.ws.on('error', () => {})
-			this.ws.terminate()
-			this.ws = undefined
+	stopControl() {
+		this.controlSession = null
+		if (this.control) {
+			this.control.stop()
+			this.control = null
 		}
 	}
 
-	scheduleReconnect() {
-		if (this.isDestroyed || !this.config.reconnect) return
-		clearTimeout(this.reconnectTimer)
-		this.reconnectTimer = setTimeout(() => this.connect(), RECONNECT_DELAY_MS)
+	/** Callbacks for a control method. Calls from a stopped or replaced method are ignored. */
+	createControlHost(session) {
+		const isCurrent = () => this.controlSession === session
+		return {
+			moduleVersion: MODULE_VERSION,
+			log: (level, message) => this.log(level, message),
+			setStatus: (status, message) => {
+				if (isCurrent()) this.updateStatus(status, message)
+			},
+			setState: (partial) => {
+				if (isCurrent()) this.applyState(partial)
+			},
+			saveSecrets: (secrets) => {
+				if (!isCurrent()) return
+				this.secrets = { ...this.secrets, ...secrets }
+				this.saveConfig(undefined, this.secrets)
+			},
+		}
 	}
 
-	handleMessage(raw) {
-		let msg
-		try {
-			msg = JSON.parse(raw)
-		} catch {
-			this.log('debug', `Ignoring non-JSON message from Teams: ${raw}`)
+	applyState(partial) {
+		const changed = mergeState(this.state, partial)
+		if (changed.length > 0) {
+			this.setVariableValues(getVariableValues(this.state, changed))
+			this.checkFeedbacks(...changed)
+		}
+	}
+
+	resetState() {
+		this.state = createInitialState()
+		this.setVariableValues(getVariableValues(this.state))
+		this.checkFeedbacks()
+	}
+
+	/** Called by action callbacks */
+	runAction(actionId, options = {}) {
+		if (!this.control) {
+			this.log('warn', `Cannot run "${actionId}": no control method is active`)
 			return
 		}
-		this.log('debug', `Received from Teams: ${raw}`)
-
-		if (msg.tokenRefresh) {
-			// Teams issued a token, either on first pairing or as a replacement. Save it for the next connection.
-			this.secrets = { ...this.secrets, apiToken: msg.tokenRefresh }
-			this.saveConfig(undefined, this.secrets)
-			this.log('info', 'Paired with Teams, token saved')
+		if (!this.control.supportsAction(actionId)) {
+			this.log('warn', `"${actionId}" is not supported by the ${this.controlMethodId} control method`)
+			return
 		}
-
-		if (msg.errorMsg) {
-			this.log('warn', `Teams rejected request ${msg.requestId ?? ''}: ${msg.errorMsg}`)
-		}
-
-		if (msg.meetingUpdate) {
-			const changed = applyMeetingUpdate(this.state, msg.meetingUpdate)
-			if (changed.length > 0) {
-				this.setVariableValues(getVariableValues(this.state, changed))
-				this.checkFeedbacks(...changed)
-			}
-		}
-	}
-
-	/** Send a command to Teams. Returns false when not connected. */
-	sendTeamsAction(action, parameters = {}) {
-		if (this.ws?.readyState !== WebSocket.OPEN) {
-			this.log('warn', `Cannot send "${action}": not connected to Teams`)
-			return false
-		}
-		this.requestId += 1
-		this.ws.send(JSON.stringify({ action, parameters, requestId: this.requestId }))
-		return true
+		this.control.runAction(actionId, options)
 	}
 }
 

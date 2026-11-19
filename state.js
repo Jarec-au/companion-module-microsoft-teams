@@ -1,8 +1,9 @@
 /**
- * Meeting state reported by the Microsoft Teams third-party device API (protocol 2.0.0).
+ * Meeting state reported by the control methods (see control/).
  *
  * Each field becomes a boolean feedback and a variable with the same id.
- * `source` is the object inside `meetingUpdate` that carries the field.
+ * `source` is the object inside the Teams API's `meetingUpdate` that carries the field, or null when the
+ * Teams API does not report it.
  */
 export const STATE_FIELDS = [
 	// meetingUpdate.meetingState
@@ -116,6 +117,20 @@ export const STATE_FIELDS = [
 		name: 'Can pair',
 		description: 'True when a third-party device can be paired. Mainly useful on first connection.',
 	},
+
+	// Not reported by the Teams API
+	{
+		id: 'isChatOpen',
+		source: null,
+		name: 'Chat pane open',
+		description: 'True when the meeting chat pane is open.',
+	},
+	{
+		id: 'isParticipantsOpen',
+		source: null,
+		name: 'People pane open',
+		description: 'True when the meeting people (participants) pane is open.',
+	},
 ]
 
 /** A state object with every field set to false */
@@ -124,20 +139,18 @@ export function createInitialState() {
 }
 
 /**
- * Apply a `meetingUpdate` message to the state object.
- * Fields missing from the update keep their previous value.
+ * Merge a partial state (as reported by a control method) into the state object.
+ * Unknown ids are ignored; fields not in the update keep their previous value.
  * @returns {string[]} ids of the fields whose value changed
  */
-export function applyMeetingUpdate(state, meetingUpdate) {
+export function mergeState(state, partial) {
 	const changed = []
-	for (const field of STATE_FIELDS) {
-		const value = meetingUpdate?.[field.source]?.[field.id]
-		if (value === undefined || value === null) continue
-
+	for (const [id, value] of Object.entries(partial ?? {})) {
+		if (!(id in state) || value === undefined || value === null) continue
 		const next = Boolean(value)
-		if (state[field.id] !== next) {
-			state[field.id] = next
-			changed.push(field.id)
+		if (state[id] !== next) {
+			state[id] = next
+			changed.push(id)
 		}
 	}
 	return changed

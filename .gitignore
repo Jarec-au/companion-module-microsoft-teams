@@ -3,5 +3,7 @@
 node_modules
 pkg
 *.tgz
+# The built package is committed for unofficial releases (yarn build writes it)
+!microsoft-teams-*.tgz
 DEBUG-PACKED
 .github

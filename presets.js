@@ -204,5 +204,48 @@ export function getPresetDefinitions() {
 		],
 	}
 
+	presets['stop-sharing'] = {
+		name: 'Stop Sharing',
+		category: 'Buttons',
+		type: 'button',
+		style: {
+			text: 'Stop\\nsharing',
+			size: '14',
+			color: combineRgb(255, 255, 255),
+			bgcolor: backgroundColor,
+		},
+		steps: [{ down: [{ actionId: 'stopSharing', options: {} }] }],
+		feedbacks: [{ feedbackId: 'canStopSharing', style: { bgcolor: backgroundColorActive } }],
+	}
+
+	const panes = [
+		{ id: 'toggle-chat', name: 'Toggle Chat Pane', text: 'Chat', actionId: 'toggleChat', feedbackId: 'isChatOpen' },
+		{
+			id: 'toggle-people',
+			name: 'Toggle People Pane',
+			text: 'People',
+			actionId: 'toggleParticipants',
+			feedbackId: 'isParticipantsOpen',
+		},
+	]
+	for (const pane of panes) {
+		presets[pane.id] = {
+			name: pane.name,
+			category: 'Buttons',
+			type: 'button',
+			style: {
+				text: pane.text,
+				size: '18',
+				color: combineRgb(255, 255, 255),
+				bgcolor: backgroundColor,
+			},
+			steps: [{ down: [{ actionId: pane.actionId, options: {} }] }],
+			feedbacks: [
+				{ feedbackId: 'isInMeeting', style: { bgcolor: backgroundColorNeutral } },
+				{ feedbackId: pane.feedbackId, style: { bgcolor: backgroundColorActive } },
+			],
+		}
+	}
+
 	return presets
 }

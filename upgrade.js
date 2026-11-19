@@ -75,4 +75,27 @@ function moveTokenToSecrets(_context, props) {
 	return result
 }
 
-export const upgradeScripts = [removeOldInvertFeedbackScripts, removeApiV1, reactionsUseNames, moveTokenToSecrets]
+/** Control method selection added; existing connections keep using the Teams API */
+function addControlMethod(_context, props) {
+	if (!props.config || props.config.controlMethod) {
+		return { updatedConfig: null, updatedActions: [], updatedFeedbacks: [] }
+	}
+	return { updatedConfig: { ...props.config, controlMethod: 'teams-api' }, updatedActions: [], updatedFeedbacks: [] }
+}
+
+/** Windows UI Automation added; connections created before then have no poll interval saved */
+function addPollInterval(_context, props) {
+	if (!props.config || props.config.pollInterval) {
+		return { updatedConfig: null, updatedActions: [], updatedFeedbacks: [] }
+	}
+	return { updatedConfig: { ...props.config, pollInterval: 500 }, updatedActions: [], updatedFeedbacks: [] }
+}
+
+export const upgradeScripts = [
+	removeOldInvertFeedbackScripts,
+	removeApiV1,
+	reactionsUseNames,
+	moveTokenToSecrets,
+	addControlMethod,
+	addPollInterval,
+]

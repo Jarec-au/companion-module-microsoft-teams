@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { STATE_FIELDS, applyMeetingUpdate, createInitialState } from '../state.js'
+import { STATE_FIELDS, createInitialState, mergeState } from '../state.js'
 
 test('initial state has every field set to false', () => {
 	const state = createInitialState()
@@ -13,30 +13,27 @@ test('field ids are unique', () => {
 	assert.equal(new Set(ids).size, ids.length)
 })
 
-test('applies meetingState and meetingPermissions and reports changes', () => {
+test('mergeState applies values and reports changes', () => {
 	const state = createInitialState()
-	const changed = applyMeetingUpdate(state, {
-		meetingState: { isMuted: true, isInMeeting: true, isVideoOn: false },
-		meetingPermissions: { canLeave: true },
-	})
+	const changed = mergeState(state, { isMuted: true, isInMeeting: 1, isVideoOn: false })
 
 	assert.equal(state.isMuted, true)
 	assert.equal(state.isInMeeting, true)
-	assert.equal(state.canLeave, true)
-	assert.deepEqual(changed.sort(), ['canLeave', 'isInMeeting', 'isMuted'])
+	assert.deepEqual(changed.sort(), ['isInMeeting', 'isMuted'])
 })
 
-test('missing fields keep their previous value', () => {
+test('mergeState ignores unknown ids and null values', () => {
 	const state = createInitialState()
-	applyMeetingUpdate(state, { meetingState: { isMuted: true } })
-	const changed = applyMeetingUpdate(state, { meetingPermissions: { canReact: true } })
+	mergeState(state, { isMuted: true })
+	const changed = mergeState(state, { isMuted: null, notAField: true, canReact: true })
 
 	assert.equal(state.isMuted, true)
+	assert.equal('notAField' in state, false)
 	assert.deepEqual(changed, ['canReact'])
 })
 
-test('ignores updates without known sections', () => {
+test('mergeState handles empty input', () => {
 	const state = createInitialState()
-	assert.deepEqual(applyMeetingUpdate(state, {}), [])
-	assert.deepEqual(applyMeetingUpdate(state, undefined), [])
+	assert.deepEqual(mergeState(state, {}), [])
+	assert.deepEqual(mergeState(state, undefined), [])
 })

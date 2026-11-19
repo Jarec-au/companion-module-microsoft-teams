@@ -7,32 +7,39 @@ export const REACTIONS = [
 	{ id: 'wow', label: 'Wow' },
 ]
 
-/** Actions that send a single Teams command with no parameters */
+/** Actions without options. How each is carried out depends on the control method. */
 const SIMPLE_ACTIONS = {
 	toggleMute: {
 		name: 'Toggle mute',
 		description: 'Mute or unmute your microphone',
-		teamsAction: 'toggle-mute',
 	},
 	toggleVideo: {
 		name: 'Toggle video',
 		description: 'Turn your camera on or off',
-		teamsAction: 'toggle-video',
 	},
 	toggleBackgroundBlur: {
 		name: 'Toggle background blur',
 		description: 'Turn background blur on or off',
-		teamsAction: 'toggle-background-blur',
 	},
 	toggleHand: {
 		name: 'Toggle raise hand',
 		description: 'Raise or lower your hand',
-		teamsAction: 'toggle-hand',
 	},
 	leaveMeeting: {
 		name: 'Leave meeting',
 		description: 'Leave the current meeting',
-		teamsAction: 'leave-call',
+	},
+	toggleChat: {
+		name: 'Toggle chat pane',
+		description: 'Open or close the meeting chat',
+	},
+	stopSharing: {
+		name: 'Stop sharing',
+		description: 'Stop sharing your screen or window. Does nothing when you are not sharing.',
+	},
+	toggleParticipants: {
+		name: 'Toggle people pane',
+		description: 'Open or close the list of people in the meeting (Windows UI Automation only)',
 	},
 }
 
@@ -45,7 +52,7 @@ export function getActionDefinitions(self) {
 			description: def.description,
 			options: [],
 			callback: () => {
-				self.sendTeamsAction(def.teamsAction)
+				self.runAction(actionId)
 			},
 		}
 	}
@@ -63,7 +70,7 @@ export function getActionDefinitions(self) {
 			},
 		],
 		callback: (action) => {
-			self.sendTeamsAction('send-reaction', { type: action.options.selectedReaction })
+			self.runAction('reaction', { selectedReaction: action.options.selectedReaction })
 		},
 	}
 
