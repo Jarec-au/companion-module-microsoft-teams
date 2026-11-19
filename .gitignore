@@ -2,6 +2,6 @@
 .vs
 node_modules
 pkg
-pkg.tgz
+*.tgz
 DEBUG-PACKED
-yarn.lock
+.github

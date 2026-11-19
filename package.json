@@ -4,21 +4,28 @@
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1",
-		"format": "prettier -w ."
+		"build": "companion-module-build",
+		"format": "prettier -w .",
+		"lint": "eslint .",
+		"test": "node --test"
 	},
 	"license": "MIT",
+	"engines": {
+		"node": "^22.20"
+	},
+	"packageManager": "yarn@1.22.22",
 	"dependencies": {
 		"@companion-module/base": "~1.14.1",
-		"object-path": "^0.11.8",
-		"ws": "^7.5.11"
+		"ws": "^8.18.0"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/bitfocus/companion-module-microsoft-teams.git"
 	},
 	"devDependencies": {
-		"@companion-module/tools": "^2.8.0"
+		"@companion-module/tools": "^2.8.0",
+		"eslint": "^9.36.0",
+		"prettier": "^3.6.2"
 	},
 	"prettier": "@companion-module/tools/.prettierrc.json"
 }
